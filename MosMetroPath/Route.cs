@@ -12,7 +12,7 @@ namespace MosMetroPath
     /// Маршрут
     /// </summary>
     [DebuggerDisplay("[{Length}] {From.Name} -> {To.Name} ({Timespan} секунд)")]
-    public partial class Route: IRoute//, ICloneable, IEnumerable<IRoute>, IEnumerable<Station>
+    public partial class Route: IRoute
     {
         /// <summary>
         /// Первый элемент маршрута
@@ -47,22 +47,7 @@ namespace MosMetroPath
         /// Количество станций, через которые проходит маршрут
         /// </summary>
         public int Length { get; private set; } = 0;
-        /*
-        public Route(Station from, Station to, int timespan)
-        {
-            Last = new RouteNode { Station = to, Next = null };
-            First = new RouteNode { Station = from, timespan, Next = Last };
 
-            OnAddStation(from, timespan);
-            OnAddStation(to, 0);
-        }
-
-        public Route(StationRelation relation)
-            :this(relation.From, relation.To, relation.Timespan)
-        {
-
-        }
-        */
         public Route(IRoute route, bool reverse = false)
         {
             First = new RouteNode
@@ -132,65 +117,16 @@ namespace MosMetroPath
 
             OnAddRoute(route);
         }
-        /*
-        public RouteNode Add(IRoute route)
-        {
-            RouteNode result;
-            if (route.HasStation(From))
-            {
-                result = AddFirst(route.GetOtherStation(From), route.Timespan);
-            }
-            else if (route.HasStation(To))
-            {
-                result = AddLast(route.GetOtherStation(To), route.Timespan);
-            }
-            else
-            {
-                throw new ArgumentException();
-            }
-
-            OnAddStation(result.Station, route.Timespan);
-
-            return result;
-        }*/
 
         public IEnumerable<Line> GetLines() => Lines;
-        /*
-        public IEnumerable<StationRelation> GetLinesRelations()
-        {
-            if (First == Last)
-                throw new NotImplementedException();
 
-            var prior = First;
-            var current = First.Next;
-            while (current != null)
-            {
-                if (current.Station.Line != prior.Station.Line)
-                {
-                    yield return new StationRelation(prior.Station, current.Station, current.Timespan);
-                }
-                prior = current;
-                current = current.Next;
-            }
-        }
-        */
-        /*
-        public object Clone()
+        public static Route Union(IRoute a, IRoute b)
         {
-            var first = First;
-            var second = First.Next;
-            var result = new Route(first.Station, second.Station, second.Timespan);
-
-            var current = First;
-            while (current != null)
-            {
-                result.AddLast(current.Station, current.Timespan);
-                current = current.Next;
-            }
+            var result = new Route(a, false);
+            result.AddLast(b);
 
             return result;
         }
-        */
 
         public IEnumerable<Station> GetStations(bool reverse = false)
         {
@@ -201,21 +137,5 @@ namespace MosMetroPath
         {
             return new Enumerable<IRoute>(() => new RouteEnumerator(this, reverse));
         }
-        /*
-        IEnumerator<IRoute> IEnumerable<IRoute>.GetEnumerator()
-        {
-            return GetRoutes().GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetRoutes().GetEnumerator();
-        }
-
-        IEnumerator<Station> IEnumerable<Station>.GetEnumerator()
-        {
-            return GetStations().GetEnumerator();
-        }
-        */
     }
 }

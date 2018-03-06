@@ -263,30 +263,6 @@ namespace MosMetroPathTest
             }
             Debug.WriteLine($"Конец маршрута. Время в пути: {route.Timespan} секунд");
         }
-        
-        private void WriteRoute(CompositeRoute route)
-        {
-            System.Diagnostics.Debug.WriteLine($"Маршрут: {route.From.Name} -> {route.To.Name}");
-            Station prior = null;
-            int counter = 0;
-
-            foreach (var station in route)
-            {
-                if (station.Line != prior?.Line)
-                {
-                    if (counter > 0)
-                        Debug.WriteLine($"({counter} станции)");
-                    Debug.WriteLine($"{prior?.Name} ({prior?.Line.Name}) -> {station.Name} ({station.Line.Name})");
-                    counter = 0;
-                }
-                else
-                    ++counter;
-
-                prior = station;
-            }
-
-            Debug.WriteLine($"Конец маршрута. Время в пути: {route.Timespan} секунд");
-        }
 
         [TestMethod]
         public void TestFindRoute()

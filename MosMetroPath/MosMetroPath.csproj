@@ -40,8 +40,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CompositeRoute.cs" />
-    <Compile Include="CompositeRouteExtensions.cs" />
     <Compile Include="IRoute.cs" />
     <Compile Include="Line.cs" />
     <Compile Include="LineExtensions.cs" />

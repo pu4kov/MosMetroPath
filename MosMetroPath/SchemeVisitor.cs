@@ -9,6 +9,12 @@ namespace MosMetroPath
 {
     public class SchemeVisitor
     {
+        /// <summary>
+        /// Поиск самого быстрого пути между двумя станциями
+        /// </summary>
+        /// <param name="from">Станция отправления</param>
+        /// <param name="to">Станция назначения</param>
+        /// <returns></returns>
         public IRoute FindRoute(Station from, Station to)
         {
             var scheme = from.Line.Scheme;
@@ -122,7 +128,7 @@ namespace MosMetroPath
             return result;
         }
         
-        public IEnumerable<CompositeRoute> VisitAllLines(Scheme scheme)
+        public IEnumerable<IRoute> VisitAllLines(Scheme scheme)
         {
             if (scheme == null)
                 throw new ArgumentNullException();
@@ -131,7 +137,7 @@ namespace MosMetroPath
 
             LineRoutesCollection linesRoutes = new LineRoutesCollection();  // Маршруты между линиями
 
-            Stack<CompositeRoute> routes = new Stack<CompositeRoute>(); // Маршруты, которые могут стать решением
+            Stack<Route> routes = new Stack<Route>(); // Маршруты, которые могут стать решением
 
             // Построение маршрутов между всеми парами пересадочных станций
             foreach (var s1 in stations)
@@ -146,12 +152,12 @@ namespace MosMetroPath
                         var newRoute = FindRoute(s1, s2);
                         //baseRoutes.Add(newRoute);
                         linesRoutes.Add(newRoute);
-                        routes.Push(new CompositeRoute(newRoute));
+                        routes.Push(new Route(newRoute));
                     }
                 }
             }
 
-            List<CompositeRoute> result = new List<CompositeRoute>();
+            List<IRoute> result = new List<IRoute>();
             int resultTimespan = int.MaxValue;
 
             while (routes.Count > 0)
@@ -185,7 +191,7 @@ namespace MosMetroPath
                             // Проверяем, что уже найденные маршруты длиннее текущего
                             if (resultTimespan >= additionalRoute.Timespan + routeTimespan)
                             {
-                                var newRoute = route.Union(additionalRoute);
+                                var newRoute = Route.Union(route, additionalRoute);
                                 routes.Push(newRoute);
                             }
                         }
