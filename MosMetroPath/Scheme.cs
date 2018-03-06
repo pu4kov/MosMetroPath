@@ -35,10 +35,11 @@ namespace MosMetroPath
 
         public IEnumerable<Line> GetLinesExclude(IEnumerable<Line> excluded)
         {
+            /*
             var result = new HashSet<Line>(Lines);
             result.ExceptWith(excluded);
-            return result;
-            //return Lines.ExceptWith.Except(excluded).ToArray();
+            return result;*/
+            return Lines.Except(excluded).ToArray();
         }
 
         public IEnumerable<Station> GetStations()

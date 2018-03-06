@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections;
+using System.Diagnostics;
 
 namespace MosMetroPath
 {
@@ -22,12 +23,12 @@ namespace MosMetroPath
             {
                 throw new ArgumentException();
             }
-
+            // Счётчики для реализации алгоритма Дейкстры
             var counters = new Dictionary<Station, TimespanCounter>();
 
             var currentFrom = from;
             var currentTimespan = 0;
-
+            // Добавляем начало маршрута в счётчики
             counters.Add(from, new TimespanCounter
             {
                 Relation = null,
@@ -39,10 +40,11 @@ namespace MosMetroPath
             do
             {
                 var rels = scheme.GetStationRelations(currentFrom);
-                foreach (var relation in rels)
+                foreach (var relation in rels)      // Перебор всех соседних станций
                 {
                     Station currentTo;
                     bool reverse;
+                    
                     if (relation.From == currentFrom)
                     {
                         currentTo = relation.To;
@@ -64,7 +66,7 @@ namespace MosMetroPath
                         else
                         {
                             if (counter.TotalTimespan > relTotalTimespan)
-                            {
+                            {   // Найден лучший путь, чем тот, что записан в "счётчиках"
                                 counter.Relation = relation;
                                 counter.IsReversed = reverse;
                                 counter.TotalTimespan = relTotalTimespan;
@@ -83,7 +85,7 @@ namespace MosMetroPath
                             });
                     }
                 }
-
+                // Поиск маршрута, который можно зафиксировать как оптимальный
                 var minTimespan = int.MaxValue;
                 Station newFixed = null;
 
@@ -113,7 +115,7 @@ namespace MosMetroPath
             var lastStation = to;                   // Последняя станция в маршруте
             var penultStation = counters[to].From;  // Предпоследняя станция
 
-            //var result = new Route(penultStation, lastStation, counters[to].CurrentTimespan);
+            // Сборка итогового маршрута движения
             var result = new Route(new StationRelation(penultStation, lastStation, counters[to].Relation.Timespan));
 
             currentFrom = counters[penultStation].From;
@@ -128,6 +130,11 @@ namespace MosMetroPath
             return result;
         }
         
+        /// <summary>
+        /// Поиск оптимальных маршрутов движения для посещения всех веток метро
+        /// </summary>
+        /// <param name="scheme">Схема метро</param>
+        /// <returns>Наиболее быстрые маршруты</returns>
         public IEnumerable<IRoute> VisitAllLines(Scheme scheme)
         {
             if (scheme == null)
@@ -139,6 +146,7 @@ namespace MosMetroPath
 
             Stack<IRoute> routes = new Stack<IRoute>(); // Маршруты, которые могут стать решением
 
+            int cnt = 0;
             // Построение маршрутов между всеми парами пересадочных станций
             foreach (var s1 in stations)
             {
@@ -150,8 +158,10 @@ namespace MosMetroPath
                         && !linesRoutes.ContainsRoute(s1, s2))
                     {
                         var newRoute = FindRoute(s1, s2);
-                        linesRoutes.Add(newRoute);
-                        routes.Push(newRoute);
+                        if (linesRoutes.Add(newRoute))
+                            routes.Push(newRoute);
+                        else
+                            cnt++;
                     }
                 }
             }
@@ -161,11 +171,23 @@ namespace MosMetroPath
 
             while (routes.Count > 0)
             {
+                /*
+                Debug.WriteLine("====================================");
+                Debug.WriteLine("routes");
+                foreach (var r in routes)
+                    Debug.WriteLine($"{r.From.Name} -> {r.To.Name} (l:{r.Length}, t:{r.Timespan})");
+                Debug.WriteLine("results");
+                foreach (var r in result)
+                    Debug.WriteLine($"{r.From.Name} -> {r.To.Name} (l:{r.Length}, t:{r.Timespan})");
+
+                Debug.WriteLine("====================================");
+                */
+
                 var route = routes.Pop();
                 var routeTimespan = route.Timespan;
-                var targetLines = scheme.GetLinesExclude(route.GetLines());
+                var targetLines = scheme.GetLinesExclude(route.GetLines()); // Ветки, которые еще осталось посетить
                 if (targetLines.FirstOrDefault() == null)
-                {
+                {   // Все ветки охвачены маршрутом
                     if (resultTimespan > routeTimespan)
                     {   // Маршрут короче тех, что уже были найдены
                         result.Clear();
@@ -177,12 +199,8 @@ namespace MosMetroPath
                         result.Add(route);
                     }
                 }
-                else if (routeTimespan >= resultTimespan)
-                {
-
-                }
-                else
-                {
+                else if(routeTimespan < resultTimespan)
+                {   // Время текущего маршрута меньше времени уже найденных полных маршрутов
                     foreach (var targetLine in targetLines)
                     {
                         foreach (var additionalRoute in linesRoutes.GetRoutes(route.To, targetLine))
@@ -264,19 +282,6 @@ namespace MosMetroPath
             public bool IsFixed { get; set; }
 
             public Station From => (IsReversed) ? Relation?.To : Relation?.From;
-        }
-
-        private class RouteComparer : IEqualityComparer<IRoute>
-        {
-            public bool Equals(IRoute x, IRoute y)
-            {
-                throw new NotImplementedException();
-            }
-
-            public int GetHashCode(IRoute obj)
-            {
-                return obj.From.GetHashCode() + obj.To.GetHashCode();
-            }
         }
     }
 }

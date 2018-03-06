@@ -10,9 +10,9 @@ namespace MosMetroPath
     /// <summary>
     /// Коллекция маршрутов между линиями
     /// </summary>
-    public class LineRoutesCollection
+    internal class LineRoutesCollection
     {
-        private Dictionary<TwoItemsKey<Line>, RoutesCollection> Routes { get; set; } = new Dictionary<TwoItemsKey<Line>, RoutesCollection>();
+        private Dictionary<TwoItemsKey<Line>, RoutesCollection<Station>> Routes { get; set; } = new Dictionary<TwoItemsKey<Line>, RoutesCollection<Station>>();
 
         public IEnumerable<IRoute> this[Line l1, Line l2]
         {
@@ -38,14 +38,15 @@ namespace MosMetroPath
         public bool Add(IRoute route)
         {
             var key = GetKey(route);
-            
-            RoutesCollection routes;
+
+            RoutesCollection<Station> routes;
             if (!Routes.TryGetValue(key, out routes))
             {
-                routes = new RoutesCollection();
+                routes = new RoutesCollection<Station>(
+                    r => new TwoItemsKey<Station>(r.From, r.To));
                 Routes.Add(key, routes);
             }
-
+            
             return routes.Add(route);
         }
 

@@ -11,10 +11,13 @@ namespace MosMetroPathTest
     public class UnitTest1
     {
         private Scheme Scheme;
+        private Scheme TestScheme;
 
         public UnitTest1()
         {
             Scheme = new Scheme();
+
+            #region Схема московского метро
 
             var red = Scheme.AddLine(@"Сокольническая");
             var green = Scheme.AddLine(@"Замоскворецкая");
@@ -231,8 +234,41 @@ namespace MosMetroPathTest
             Scheme.AddRelation(sret_bul, prudi, 240);               // Чистые пруды -> Сретенский бульвар
             Scheme.AddRelation(trub, tzhvetnoy, 300);               // Цветной бульвар -> Трубная
             Scheme.AddRelation(petr_razum_lubl, petrovsko, 180);    // Петровско-Разумовская -> Петровско-Разумовская
+
+            #endregion
+
+            #region Тестовая схема
+
+            TestScheme = new Scheme();
+
+            var lineGreen = TestScheme.AddLine("green");
+            var lineRed = TestScheme.AddLine("red");
+            var lineYellow = TestScheme.AddLine("yellow");
+
+            lineGreen
+                .AddStation(@"green1")
+                .RelationTo(@"green2", 10, out var green2)
+                .RelationTo(@"green3", 15);
+
+            lineRed
+                .AddStation(@"red1", out var red1)
+                .RelationTo(@"red2", 12)
+                .RelationTo(@"red3", 15, out var red3)
+                .RelationTo(@"red4", 10);
+
+            lineYellow
+                .AddStation(@"yellow1")
+                .RelationTo(@"yellow2", 22, out var yellow2)
+                .RelationTo(@"yellow3", 10)
+                .RelationTo(@"yellow4", 40);
+
+            TestScheme.AddRelation(green2, red1, 8);
+            TestScheme.AddRelation(red1, yellow2, 18);
+            TestScheme.AddRelation(yellow2, green2,30);
+
+            #endregion
         }
-        
+
         private void WriteRoute(IRoute route)
         {
             Debug.WriteLine($"Маршрут: {route.From.Name} -> {route.To.Name}");
@@ -279,6 +315,16 @@ namespace MosMetroPathTest
         public void TestVisitAllLines()
         {
             var routes = new SchemeVisitor().VisitAllLines(Scheme);            
+            foreach (var r in routes)
+            {
+                WriteRoute(r);
+            }
+        }
+
+        [TestMethod]
+        public void TestVisitAllLinesOnTest()
+        {
+            var routes = new SchemeVisitor().VisitAllLines(TestScheme);
             foreach (var r in routes)
             {
                 WriteRoute(r);

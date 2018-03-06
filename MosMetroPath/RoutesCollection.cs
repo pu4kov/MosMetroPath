@@ -11,11 +11,12 @@ namespace MosMetroPath
     /// <summary>
     /// Коллекция маршрутов с уникальным значением пары ключей: пункт отправления, пункт назначения (маршрут a -> b == b -> a)
     /// </summary>
-    public class RoutesCollection: IEnumerable<IRoute>
+    internal class RoutesCollection<TKey>: IEnumerable<IRoute>
+        where TKey: class, IId
     {
-        private Dictionary<TwoItemsKey<Station>, IRoute> Routes { get; set; } = new Dictionary<TwoItemsKey<Station>, IRoute>();
+        private Dictionary<TwoItemsKey<TKey>, IRoute> Routes { get; set; } = new Dictionary<TwoItemsKey<TKey>, IRoute>();
 
-        public IRoute this[Station s1, Station s2]
+        public IRoute this[TKey s1, TKey s2]
         {
             get
             {
@@ -28,19 +29,22 @@ namespace MosMetroPath
 
         public int Count => Routes.Count;
 
-        private TwoItemsKey<Station> GetKey(IRoute route)
+        private Func<IRoute, TwoItemsKey<TKey>> _getKey;
+        public RoutesCollection(Func<IRoute, TwoItemsKey<TKey>> getKey)
         {
-            return new TwoItemsKey<Station>(route.From, route.To);
+            _getKey = getKey;
         }
 
-        private TwoItemsKey<Station> GetKey(Station s1, Station s2)
+            
+
+        internal static TwoItemsKey<TKey> GetKey(TKey s1, TKey s2)
         {
-            return new TwoItemsKey<Station>(s1, s2);
+            return new TwoItemsKey<TKey>(s1, s2);
         }
 
         public bool Add(IRoute route)
         {
-            var key = GetKey(route);
+            var key = _getKey(route);
 
             if (Routes.TryGetValue(key, out var existsRoute))
             {
@@ -55,18 +59,18 @@ namespace MosMetroPath
 
         public bool Remove(IRoute route)
         {
-            var key = GetKey(route);
+            var key = _getKey(route);
 
             return Routes.Remove(key);
         }
 
-        public bool ContainsKey(Station s1, Station s2)
+        public bool ContainsKey(TKey s1, TKey s2)
         {
             var key = GetKey(s1, s2);
             return Routes.ContainsKey(key);
         }
 
-        public bool TryGetRoute(Station s1, Station s2, out IRoute route)
+        public bool TryGetRoute(TKey s1, TKey s2, out IRoute route)
         {
             var key = GetKey(s1, s2);
 
