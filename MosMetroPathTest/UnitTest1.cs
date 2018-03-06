@@ -278,12 +278,8 @@ namespace MosMetroPathTest
         [TestMethod]
         public void TestVisitAllLines()
         {
-            var routes = new SchemeVisitor()
-                .VisitAllLines(Scheme)
-                .OrderBy(r => r.Timespan)
-                .ToArray();
-            var minRoutes = routes.Where(r => r.Timespan == routes.Min(rr => rr.Timespan)).ToArray();
-            foreach (var r in minRoutes)
+            var routes = new SchemeVisitor().VisitAllLines(Scheme);            
+            foreach (var r in routes)
             {
                 WriteRoute(r);
             }

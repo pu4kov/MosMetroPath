@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IId.cs" />
     <Compile Include="IRoute.cs" />
     <Compile Include="Line.cs" />
     <Compile Include="LineExtensions.cs" />
@@ -56,6 +57,7 @@
     <Compile Include="Scheme.cs" />
     <Compile Include="Station.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TwoItemsKey.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

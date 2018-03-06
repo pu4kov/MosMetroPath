@@ -8,9 +8,12 @@ using System.Collections;
 
 namespace MosMetroPath
 {
+    /// <summary>
+    /// Коллекция маршрутов с уникальным значением пары ключей: пункт отправления, пункт назначения (маршрут a -> b == b -> a)
+    /// </summary>
     public class RoutesCollection: IEnumerable<IRoute>
     {
-        private Dictionary<RouteKey, IRoute> Routes { get; set; } = new Dictionary<RouteKey, IRoute>();
+        private Dictionary<TwoItemsKey<Station>, IRoute> Routes { get; set; } = new Dictionary<TwoItemsKey<Station>, IRoute>();
 
         public IRoute this[Station s1, Station s2]
         {
@@ -25,9 +28,19 @@ namespace MosMetroPath
 
         public int Count => Routes.Count;
 
+        private TwoItemsKey<Station> GetKey(IRoute route)
+        {
+            return new TwoItemsKey<Station>(route.From, route.To);
+        }
+
+        private TwoItemsKey<Station> GetKey(Station s1, Station s2)
+        {
+            return new TwoItemsKey<Station>(s1, s2);
+        }
+
         public bool Add(IRoute route)
         {
-            var key = RouteKey.FromRoute(route);
+            var key = GetKey(route);
 
             if (Routes.TryGetValue(key, out var existsRoute))
             {
@@ -42,20 +55,20 @@ namespace MosMetroPath
 
         public bool Remove(IRoute route)
         {
-            var key = RouteKey.FromRoute(route);
+            var key = GetKey(route);
 
             return Routes.Remove(key);
         }
 
         public bool ContainsKey(Station s1, Station s2)
         {
-            var key = new RouteKey(s1, s2);
+            var key = GetKey(s1, s2);
             return Routes.ContainsKey(key);
         }
 
         public bool TryGetRoute(Station s1, Station s2, out IRoute route)
         {
-            var key = new RouteKey(s1, s2);
+            var key = GetKey(s1, s2);
 
             return Routes.TryGetValue(key, out route);
         }
@@ -68,44 +81,6 @@ namespace MosMetroPath
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
-        }
-
-        [DebuggerDisplay("{Station1.Name}-{Station2.Name}")]
-        private class RouteKey : IEquatable<RouteKey>
-        {
-            public Station Station1 { get; }
-            public Station Station2 { get; }
-
-            public RouteKey(Station s1, Station s2)
-            {
-                Station1 = s1;
-                Station2 = s2;
-            }
-
-            public static RouteKey FromRoute(IRoute route)
-            {
-                return new RouteKey(route.From, route.To);
-            }
-
-            public bool Equals(RouteKey other)
-            {
-                return
-                    ((Station1 == other.Station1 && Station2 == other.Station2)
-                    || (Station2 == other.Station1 && Station1 == other.Station2));
-            }
-
-            public override int GetHashCode()
-            {
-                return Station1.Id + Station2.Id;
-            }
-
-            public override bool Equals(object obj)
-            {
-                if (obj is RouteKey other)
-                    return Equals(other);
-
-                return false;
-            }
         }
     }
 }

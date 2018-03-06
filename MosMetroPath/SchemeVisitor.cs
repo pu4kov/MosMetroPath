@@ -14,7 +14,7 @@ namespace MosMetroPath
         /// </summary>
         /// <param name="from">Станция отправления</param>
         /// <param name="to">Станция назначения</param>
-        /// <returns></returns>
+        /// <returns>Найденный путь</returns>
         public IRoute FindRoute(Station from, Station to)
         {
             var scheme = from.Line.Scheme;
@@ -99,7 +99,7 @@ namespace MosMetroPath
 
                 if (newFixed == null)
                 {
-                    throw new Exception();
+                    throw new Exception($"Невозможно построить маршрут от станции {from.Name} до станции {to.Name}");
                 }
 
                 var newFixedCounter = counters[newFixed];
@@ -137,7 +137,7 @@ namespace MosMetroPath
 
             LineRoutesCollection linesRoutes = new LineRoutesCollection();  // Маршруты между линиями
 
-            Stack<Route> routes = new Stack<Route>(); // Маршруты, которые могут стать решением
+            Stack<IRoute> routes = new Stack<IRoute>(); // Маршруты, которые могут стать решением
 
             // Построение маршрутов между всеми парами пересадочных станций
             foreach (var s1 in stations)
@@ -150,9 +150,8 @@ namespace MosMetroPath
                         && !linesRoutes.ContainsRoute(s1, s2))
                     {
                         var newRoute = FindRoute(s1, s2);
-                        //baseRoutes.Add(newRoute);
                         linesRoutes.Add(newRoute);
-                        routes.Push(new Route(newRoute));
+                        routes.Push(newRoute);
                     }
                 }
             }
@@ -188,7 +187,7 @@ namespace MosMetroPath
                     {
                         foreach (var additionalRoute in linesRoutes.GetRoutes(route.To, targetLine))
                         {
-                            // Проверяем, что уже найденные маршруты длиннее текущего
+                            // Дальше обрабатываются только те маршруты, которые короче уже найденных
                             if (resultTimespan >= additionalRoute.Timespan + routeTimespan)
                             {
                                 var newRoute = Route.Union(route, additionalRoute);
@@ -201,6 +200,60 @@ namespace MosMetroPath
             
 
             return result;
+        }
+
+        private enum RouteCompareResult
+        {
+            Equals, // маршруты одинаковы
+            Better, // Первый маршрут лучше
+            Worse,  // Второй маршрут лучше
+            Unknown // Нельзя однозначно сравнить маршруты
+        }
+
+        /// <summary>
+        /// Сравнение двух маршрутов
+        /// </summary>
+        /// <param name="r1">Первый маршрут</param>
+        /// <param name="r2">Второй маршрут</param>
+        /// <returns>Результат сравнения</returns>
+        private RouteCompareResult CompareRoutes(IRoute r1, IRoute r2)
+        {
+            if ((r1.From == r2.From && r1.To == r2.To)
+                || (r1.To == r2.From && r1.From == r2.To))
+            {
+                var l1 = new HashSet<Line>(r1.GetLines());
+                var l2 = new HashSet<Line>(r2.GetLines());
+                var le1 = l1.Except(l2);
+                var le2 = l2.Except(l1);
+
+                if (le1.FirstOrDefault() == null && le2.FirstOrDefault() == null)
+                {
+                    if (r1.Timespan < r2.Timespan)
+                    {
+                        return RouteCompareResult.Better;
+                    }
+                    else if (r1.Timespan == r2.Timespan)
+                    {
+                        return RouteCompareResult.Equals;
+                    }
+                    else
+                    {
+                        return RouteCompareResult.Worse;
+                    }
+                }
+                else if (le1.FirstOrDefault() == null)
+                {
+                    if (r2.Timespan <= r1.Timespan)
+                        return RouteCompareResult.Worse;
+                }
+                else if (le2.FirstOrDefault() == null)
+                {
+                    if (r1.Timespan < r2.Timespan)
+                        return RouteCompareResult.Better;
+                }
+            }
+
+            return RouteCompareResult.Unknown;
         }
 
         private class TimespanCounter

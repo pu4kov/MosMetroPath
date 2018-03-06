@@ -11,7 +11,7 @@ namespace MosMetroPath
     /// Станция
     /// </summary>
     [DebuggerDisplay("{Name} ({Line.Name})")]
-    public class Station
+    public class Station: IId
     {
         public int Id { get; }
         public string Name { get; set; }

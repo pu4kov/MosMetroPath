@@ -8,6 +8,9 @@ using System.Collections;
 
 namespace MosMetroPath
 {
+    /// <summary>
+    /// Связь между двумя станциями (ж/д путь, переход)
+    /// </summary>
     [DebuggerDisplay("{From?.Name} -> {To?.Name}: {Timespan}")]
     public class StationRelation: IRoute
     {

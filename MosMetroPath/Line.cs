@@ -11,7 +11,7 @@ namespace MosMetroPath
     /// Ветка метро
     /// </summary>
     [DebuggerDisplay("{Name}")]
-    public class Line
+    public class Line: IId
     {
         public int Id { get; }
         public string Name { get; set; }
