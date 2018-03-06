@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 
 namespace MosMetroPath
 {
-    public interface IRoute: IEnumerable<Station>
+    public interface IRoute
     {
         Station From { get; }
         Station To { get; }
         int Timespan { get; }
         int Length { get; }
         IEnumerable<Line> GetLines();
+        IEnumerable<Station> GetStations(bool reverse);
+        IEnumerable<IRoute> GetRoutes(bool reverse);
     }
 }

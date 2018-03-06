@@ -11,16 +11,23 @@ namespace MosMetroPath
     [DebuggerDisplay("{From?.Name} -> {To?.Name}: {Timespan}")]
     public class StationRelation: IRoute
     {
-        public virtual Station From { get; }
-        public virtual Station To { get; }
+        private Station[] _stations;
+        public Station From => _stations[0];
+        public Station To => _stations[1];
         public int Timespan { get; protected set; }
-
         public int Length => 2;
 
-        public StationRelation(Station from, Station to, int timespan = 0)
+        public StationRelation(Station from, Station to, int timespan)
         {
-            From = from ?? throw new ArgumentNullException(nameof(from));
-            To = to ?? throw new ArgumentNullException(nameof(to));
+            if (from == null)
+            {
+                throw new ArgumentNullException(nameof(from));
+            }
+            if (to == null)
+            {
+                throw new ArgumentNullException(nameof(to));
+            }
+            _stations = new Station[] { from, to };
             Timespan = timespan;
         }
 
@@ -36,12 +43,6 @@ namespace MosMetroPath
             }
 
             throw new ArgumentOutOfRangeException(nameof(station));
-        }
-
-        public bool HasStation(Station station)
-        {
-            return From == station
-                || To == station;
         }
 
         public override int GetHashCode()
@@ -69,14 +70,14 @@ namespace MosMetroPath
                 yield return To.Line;
         }
 
-        public IEnumerator<Station> GetEnumerator()
+        public IEnumerable<Station> GetStations(bool reverse = false)
         {
-            return (new List<Station> { From, To }).GetEnumerator();
+            return (reverse) ? _stations.Reverse() : _stations;
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        public IEnumerable<IRoute> GetRoutes(bool reverse = false)
         {
-            return GetEnumerator();
+            return Enumerable.Empty<IRoute>();
         }
     }
 }

@@ -22,14 +22,32 @@ namespace MosMetroPath
             var currentFrom = from;
             var currentTimespan = 0;
 
-            counters.Add(from, new TimespanCounter { From = null, IsFixed = true, TotalTimespan = 0, CurrentTimespan = 0 });
+            counters.Add(from, new TimespanCounter
+            {
+                Relation = null,
+                IsReversed = false,
+                IsFixed = true,
+                TotalTimespan = 0
+            });
 
             do
             {
                 var rels = scheme.GetStationRelations(currentFrom);
                 foreach (var relation in rels)
                 {
-                    var currentTo = relation.GetOtherStation(currentFrom);
+                    Station currentTo;
+                    bool reverse;
+                    if (relation.From == currentFrom)
+                    {
+                        currentTo = relation.To;
+                        reverse = false;
+                    }
+                    else
+                    {
+                        currentTo = relation.From;
+                        reverse = true;
+                    }
+
                     var relTotalTimespan = currentTimespan + relation.Timespan;
                     if (counters.TryGetValue(currentTo, out var counter))
                     {
@@ -41,14 +59,22 @@ namespace MosMetroPath
                         {
                             if (counter.TotalTimespan > relTotalTimespan)
                             {
-                                counter.From = currentFrom;
+                                counter.Relation = relation;
+                                counter.IsReversed = reverse;
                                 counter.TotalTimespan = relTotalTimespan;
                             }
                         }
                     }
                     else
                     {
-                        counters.Add(currentTo, new TimespanCounter { From = currentFrom, CurrentTimespan = relation.Timespan, TotalTimespan = relTotalTimespan, IsFixed = false });
+                        counters.Add(currentTo,
+                            new TimespanCounter
+                            {
+                                Relation = relation,
+                                IsReversed = reverse,
+                                TotalTimespan = relTotalTimespan,
+                                IsFixed = false
+                            });
                     }
                 }
 
@@ -81,13 +107,14 @@ namespace MosMetroPath
             var lastStation = to;                   // Последняя станция в маршруте
             var penultStation = counters[to].From;  // Предпоследняя станция
 
-            var result = new Route(penultStation, lastStation, counters[to].CurrentTimespan);
+            //var result = new Route(penultStation, lastStation, counters[to].CurrentTimespan);
+            var result = new Route(new StationRelation(penultStation, lastStation, counters[to].Relation.Timespan));
 
             currentFrom = counters[penultStation].From;
             var currentCounter = counters[penultStation];
             while (currentFrom != null)
             {
-                result.AddFirst(currentFrom, currentCounter.CurrentTimespan);
+                result.AddFirst(currentCounter.Relation);
                 currentCounter = counters[currentFrom];
                 currentFrom = currentCounter.From;
             }
@@ -168,50 +195,16 @@ namespace MosMetroPath
             
 
             return result;
-
-            /*
-            var startStations = scheme.GetAllLineRelationStations();
-
-            var routes = new Queue<Route>();
-
-            foreach (var start in startStations)
-            {
-                var otherLines = scheme.GetLinesExclude(new Line[] { start.Line });
-                var otherStations = scheme.GetLinesRelationStations(otherLines);
-                
-                foreach (var station in otherStations)
-                {
-                    var route = FindRoute(start, station);
-                    routes.Enqueue(route);
-                }
-            }
-
-            while (routes.Count > 0)
-            {
-                var route = routes.Dequeue();
-
-                var otherLines = scheme.GetLinesExclude(route.Lines);
-                if (otherLines.Count == 0)
-                    yield return route;
-
-                var otherStations = scheme.GetLinesRelationStations(otherLines);
-
-                foreach (var station in otherStations)
-                {
-                    if (station == route.To)
-                        continue;
-                    var newRoute = FindRoute(route.To, station);
-                    //routes.Enqueue(route.Concat(newRoute));
-                }
-            }*/
         }
 
         private class TimespanCounter
         {
-            public Station From { get; set; }
-            public int CurrentTimespan { get; set; }
+            public StationRelation Relation { get; set; }
+            public bool IsReversed { get; set; }
             public int TotalTimespan { get; set; }
             public bool IsFixed { get; set; }
+
+            public Station From => (IsReversed) ? Relation?.To : Relation?.From;
         }
 
         private class RouteComparer : IEqualityComparer<IRoute>

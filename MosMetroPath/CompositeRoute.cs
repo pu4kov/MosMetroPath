@@ -175,6 +175,16 @@ namespace MosMetroPath
             return new CompositeRoute(this);
         }
 
+        public IEnumerable<Station> GetStations(bool reverse)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<IRoute> GetRoutes(bool reverse)
+        {
+            throw new NotImplementedException();
+        }
+
         private class CompositeRouteNode
         {
             public IRoute Route { get; }
@@ -218,7 +228,7 @@ namespace MosMetroPath
             {
                 _start = node;
                 _currentNode = node;
-                _currentRoute = node.Route.GetEnumerator();
+                //_currentRoute = node.Route.GetEnumerator();
             }
 
             public void Dispose()
@@ -234,11 +244,12 @@ namespace MosMetroPath
                         return false;
 
                     _currentNode = _currentNode.Next;
-
+                    /*
                     if (_currentNode.IsReverse)
                         _currentRoute = _currentNode.Route.Reverse().GetEnumerator();
                     else
                         _currentRoute = _currentNode.Route.GetEnumerator();
+                    */
                 }
 
                 return true;

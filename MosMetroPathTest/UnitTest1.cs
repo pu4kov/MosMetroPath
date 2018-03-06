@@ -232,13 +232,38 @@ namespace MosMetroPathTest
             Scheme.AddRelation(trub, tzhvetnoy, 300);               // Цветной бульвар -> Трубная
             Scheme.AddRelation(petr_razum_lubl, petrovsko, 180);    // Петровско-Разумовская -> Петровско-Разумовская
         }
-        /*
+        
         private void WriteRoute(IRoute route)
         {
-            System.Diagnostics.Debug.WriteLine($"---route from {route.From.Name} to {route.To.Name} timespan {route.Timespan}");
-            //System.Diagnostics.Debug.WriteLine(string.Join(" ... ", route.GetLinesRelations().Select(rr => rr.From.Name + " > " + rr.To.Name)));
+            Debug.WriteLine($"Маршрут: {route.From.Name} -> {route.To.Name}");
+            int counter = 0;
+            int timespan = 0;
+            foreach (var r in route.GetRoutes(false))
+            {
+                if (r.From.Line == r.To.Line)
+                {
+                    timespan += r.Timespan;
+                    counter++;
+                }
+                else
+                {
+                    if (counter > 0)
+                    {
+                        Debug.WriteLine($"  {counter} станции(й) ({timespan} секунд)");
+                        counter = 0;
+                        timespan = 0;
+                    }
+
+                    Debug.WriteLine($"{r.From.Name} ({r.From.Line.Name}) -> {r.To.Name} ({r.To.Name}) ({r.Timespan} секунд)");
+                }
+            }
+            if (counter > 0)
+            {
+                    Debug.WriteLine($"  {counter} станции(й) ({timespan} секунд)");
+            }
+            Debug.WriteLine($"Конец маршрута. Время в пути: {route.Timespan} секунд");
         }
-        */
+        
         private void WriteRoute(CompositeRoute route)
         {
             System.Diagnostics.Debug.WriteLine($"Маршрут: {route.From.Name} -> {route.To.Name}");
@@ -271,6 +296,7 @@ namespace MosMetroPathTest
             var to = Scheme.GetStations()
                 .Where(s => s.Name == @"Алтуфьево").First();
             var route = new SchemeVisitor().FindRoute(from, to);
+            WriteRoute(route);
         }
 
         [TestMethod]

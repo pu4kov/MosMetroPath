@@ -46,6 +46,10 @@
     <Compile Include="Line.cs" />
     <Compile Include="LineExtensions.cs" />
     <Compile Include="LineRoutesCollection.cs" />
+    <Compile Include="Route.Enumerable.cs" />
+    <Compile Include="Route.RouteEnumerator.cs" />
+    <Compile Include="Route.RouteNode.cs" />
+    <Compile Include="Route.StationEnumerator.cs" />
     <Compile Include="RoutesCollection.cs" />
     <Compile Include="SchemeVisitor.cs" />
     <Compile Include="StationExtensions.cs" />
