@@ -21,12 +21,7 @@ namespace MosMetroPath
 
         public static IEnumerable<Station> GetRelationStations(this Line line)
         {
-            return null;
-            /*
-            var rels = line.Scheme.GetLineRelations(line);
-            foreach (var r in rels)
-                yield return (r.From.Line == line) ? r.From : r.To;
-                */
+            return line.Scheme.GetLineRelationStations(line);
         }
     }
 }

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using System.Collections;
 using System.Diagnostics;
 
@@ -140,18 +141,18 @@ namespace MosMetroPath
             if (scheme == null)
                 throw new ArgumentNullException();
 
-            var stations = scheme.GetAllLineRelationStations();    // Все пересадочные станции всех веток
+            var stations = scheme.GetAllLineRelationStations().ToList();    // Все пересадочные станции всех веток
 
             LineRoutesCollection linesRoutes = new LineRoutesCollection();  // Маршруты между линиями
+            PartialRoutesCollection routes = new PartialRoutesCollection(); // Маршруты, которые могут стать решением
 
-            Stack<IRoute> routes = new Stack<IRoute>(); // Маршруты, которые могут стать решением
-
-            int cnt = 0;
             // Построение маршрутов между всеми парами пересадочных станций
-            foreach (var s1 in stations)
+            for (int i = 0; i < stations.Count - 1; ++i)
             {
-                foreach (var s2 in stations)
+                var s1 = stations[i];
+                for (int j = i + 1; j < stations.Count; ++j)
                 {
+                    var s2 = stations[j];
                     // Поиск маршрута только если станции на разных ветках
                     // и маршрут не был ранее уже найден
                     if (s1.Line != s2.Line
@@ -159,119 +160,141 @@ namespace MosMetroPath
                     {
                         var newRoute = FindRoute(s1, s2);
                         if (linesRoutes.Add(newRoute))
-                            routes.Push(newRoute);
-                        else
-                            cnt++;
+                        {
+                            routes.Add(newRoute);
+                        }
                     }
                 }
             }
 
-            List<IRoute> result = new List<IRoute>();
-            int resultTimespan = int.MaxValue;
-
-            while (routes.Count > 0)
+            ResultCollection result = new ResultCollection();
+            
+            while (routes.TryPop(out var route))
             {
-                /*
-                Debug.WriteLine("====================================");
-                Debug.WriteLine("routes");
-                foreach (var r in routes)
-                    Debug.WriteLine($"{r.From.Name} -> {r.To.Name} (l:{r.Length}, t:{r.Timespan})");
-                Debug.WriteLine("results");
-                foreach (var r in result)
-                    Debug.WriteLine($"{r.From.Name} -> {r.To.Name} (l:{r.Length}, t:{r.Timespan})");
+                if (route.Timespan > result.Timespan)
+                    continue;
 
-                Debug.WriteLine("====================================");
-                */
-
-                var route = routes.Pop();
-                var routeTimespan = route.Timespan;
                 var targetLines = scheme.GetLinesExclude(route.GetLines()); // Ветки, которые еще осталось посетить
                 if (targetLines.FirstOrDefault() == null)
-                {   // Все ветки охвачены маршрутом
-                    if (resultTimespan > routeTimespan)
-                    {   // Маршрут короче тех, что уже были найдены
-                        result.Clear();
-                        resultTimespan = routeTimespan;
-                        result.Add(route);
-                    }
-                    else if (resultTimespan == routeTimespan)
-                    {
-                        result.Add(route);
-                    }
+                {
+                    result.Add(route);
                 }
-                else if(routeTimespan < resultTimespan)
+                else if(route.Timespan < result.Timespan)
                 {   // Время текущего маршрута меньше времени уже найденных полных маршрутов
                     foreach (var targetLine in targetLines)
                     {
                         foreach (var additionalRoute in linesRoutes.GetRoutes(route.To, targetLine))
                         {
                             // Дальше обрабатываются только те маршруты, которые короче уже найденных
-                            if (resultTimespan >= additionalRoute.Timespan + routeTimespan)
+                            if (result.Timespan >= additionalRoute.Timespan + route.Timespan)
                             {
                                 var newRoute = Route.Union(route, additionalRoute);
-                                routes.Push(newRoute);
+                                routes.Add(newRoute);
                             }
                         }
                     }
                 }
             }
-            
 
             return result;
         }
-
-        private enum RouteCompareResult
-        {
-            Equals, // маршруты одинаковы
-            Better, // Первый маршрут лучше
-            Worse,  // Второй маршрут лучше
-            Unknown // Нельзя однозначно сравнить маршруты
-        }
-
         /// <summary>
-        /// Сравнение двух маршрутов
+        /// Поиск оптимального маршрута с посещением всех веток метро с помощью метода ветвей и границ
         /// </summary>
-        /// <param name="r1">Первый маршрут</param>
-        /// <param name="r2">Второй маршрут</param>
-        /// <returns>Результат сравнения</returns>
-        private RouteCompareResult CompareRoutes(IRoute r1, IRoute r2)
+        /// <param name="scheme"></param>
+        /// <returns></returns>
+        public IEnumerable<IRoute> VisitAllLinesByBranchAndBound(Scheme scheme)
         {
-            if ((r1.From == r2.From && r1.To == r2.To)
-                || (r1.To == r2.From && r1.From == r2.To))
-            {
-                var l1 = new HashSet<Line>(r1.GetLines());
-                var l2 = new HashSet<Line>(r2.GetLines());
-                var le1 = l1.Except(l2);
-                var le2 = l2.Except(l1);
+            if (scheme == null)
+                throw new ArgumentNullException();
 
-                if (le1.FirstOrDefault() == null && le2.FirstOrDefault() == null)
+            var stations = scheme.GetAllLineRelationStations();    // Все пересадочные станции всех веток
+
+
+            var lines = scheme.GetLines().ToArray();    // все ветки метро
+            var linesStations = new Station[lines.Length][];    // массив станций переходов для каждой ветки
+            var indeces = new int[lines.Length];    // индекс станции для каждой ветки
+            for (var i = 0; i < lines.Length; ++i)
+            {
+                linesStations[i] = lines[i].GetRelationStations().ToArray();
+                indeces[i] = 0;
+            }
+
+            var lastLineInd = indeces.Length - 1;
+
+            var cache = new RoutesCollection<Station>((r) => new TwoItemsKey<Station>(r.From, r.To));
+            var visitor = new AllLinesVisitor();
+
+            ActionBlock<IEnumerable<IRoute>> addRouteAction = new ActionBlock<IEnumerable<IRoute>>(
+                (routes) =>
                 {
-                    if (r1.Timespan < r2.Timespan)
+                    visitor.Push(routes);
+                },
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4 });
+
+            int counter = 0;
+
+            bool next = true;
+            do
+            {
+                // Обработка станций
+                var routes = new List<IRoute>();
+                for (int fromLineId = 0; fromLineId < indeces.Length - 1; ++fromLineId)
+                {
+                    var fromStation = linesStations[fromLineId][indeces[fromLineId]];
+                    for (int toLineId = fromLineId + 1; toLineId < indeces.Length; ++toLineId)
                     {
-                        return RouteCompareResult.Better;
+                        var toStation = linesStations[toLineId][indeces[toLineId]];
+                        IRoute route;
+                        if (!cache.TryGetRoute(fromStation, toStation, out route))
+                        {
+                            route = FindRoute(fromStation, toStation);
+                            cache.Add(route);
+                        }
+
+                        routes.Add(route);
                     }
-                    else if (r1.Timespan == r2.Timespan)
+                }
+                addRouteAction.Post(routes);
+                counter++;
+                
+                // ограничение маршрутов для тестирования
+                if (counter > 10)
+                    next = false;
+                
+                // Переход к следующей комбинации
+                var lineInd = lastLineInd;
+                do
+                {
+                    ++indeces[lineInd];
+                    if (indeces[lineInd] >= linesStations[lineInd].Length)
                     {
-                        return RouteCompareResult.Equals;
+                        if (lineInd == 0)
+                        {   // перебраны все возможные комбинации
+                            next = false;
+                            break;
+                        }
+                        else
+                        {
+                            indeces[lineInd] = 0;
+                        }
                     }
                     else
                     {
-                        return RouteCompareResult.Worse;
+                        break;
                     }
+                    --lineInd;
                 }
-                else if (le1.FirstOrDefault() == null)
-                {
-                    if (r2.Timespan <= r1.Timespan)
-                        return RouteCompareResult.Worse;
-                }
-                else if (le2.FirstOrDefault() == null)
-                {
-                    if (r1.Timespan < r2.Timespan)
-                        return RouteCompareResult.Better;
-                }
+                while (lineInd >= 0);
             }
+            while (next);
 
-            return RouteCompareResult.Unknown;
+            addRouteAction.Complete();
+            addRouteAction.Completion.Wait();
+
+            visitor.Run();
+
+            return visitor.Results;
         }
 
         private class TimespanCounter
@@ -282,6 +305,152 @@ namespace MosMetroPath
             public bool IsFixed { get; set; }
 
             public Station From => (IsReversed) ? Relation?.To : Relation?.From;
+        }
+
+        private class PartialRoutesCollection
+        {
+            private Dictionary<TwoItemsKey<Station>, ICollection<IRoute>> _routes = new Dictionary<TwoItemsKey<Station>, ICollection<IRoute>>();
+            private LinkedList<IRoute> _betterRoutes = new LinkedList<IRoute>();
+
+            private TwoItemsKey<Station> GetKey(Station s1, Station s2)
+            {
+                return new TwoItemsKey<Station>(s1, s2);
+            }
+
+            private void OnAddRoute(IRoute route)
+            {
+                if (_betterRoutes.First == null)
+                {
+                    _betterRoutes.AddFirst(route);
+                }
+                else
+                {
+                    var rLinesCnt = route.GetLines().Count();
+
+                    var currentNode = _betterRoutes.First;
+                    do
+                    {
+                        var cLinesCnt = currentNode.Value.GetLines().Count();
+                        if (rLinesCnt > cLinesCnt)
+                        {
+                            _betterRoutes.AddBefore(currentNode, route);
+                            break;
+                        }
+                        else if (rLinesCnt == cLinesCnt)
+                        {
+                            if (currentNode.Value.Timespan > route.Timespan)
+                            {
+                                _betterRoutes.AddBefore(currentNode, route);
+                                break;
+                            }
+                        }
+                        currentNode = currentNode.Next;
+                    }
+                    while (currentNode != null);
+                    if (currentNode == null)
+                    {
+                        _betterRoutes.AddLast(route);
+                    }
+                }
+            }
+
+            public bool TryPop(out IRoute route)
+            {
+                if (_betterRoutes.First != null)
+                {
+                    route = _betterRoutes.First.Value;
+
+                    _betterRoutes.RemoveFirst();
+                    return true;
+                }
+
+                route = null;
+                return false;
+            }
+
+            public bool Add(IRoute route)
+            {
+                var key = GetKey(route.From, route.To);
+                var result = true;
+
+                if (_routes.TryGetValue(key, out var routes))
+                {
+                    foreach (var r in routes)
+                    {
+                        if (route.Equals(r))
+                        {
+                            result = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    routes = new List<IRoute>();
+                    _routes.Add(key, routes);
+                }
+
+                if (result)
+                {
+                    routes.Add(route);
+                    OnAddRoute(route);
+                }
+
+                return result;
+            }
+        }
+
+        [DebuggerDisplay("Timespan = {Timespan}, Count = {routes.Count}")]
+        private class ResultCollection : IEnumerable<IRoute>
+        {
+            private List<IRoute> routes = new List<IRoute>();
+
+            public int Timespan { get; private set; } = int.MaxValue;
+
+            public bool Add(IRoute route)
+            {
+                bool adding = true;
+                if (route.Timespan == Timespan)
+                {
+                    foreach (var r in routes)
+                    {
+                        if (r.Length == route.Length)
+                        {
+                            if (r.GetRoutes(false).Except(route.GetRoutes(false)).FirstOrDefault() == null)
+                            {
+                                adding = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                else if (route.Timespan < Timespan)
+                {
+                    routes.Clear();
+                }
+                else
+                {
+                    adding = false;
+                }
+
+                if (adding)
+                {
+                    Timespan = route.Timespan;
+                    routes.Add(route);
+                }
+
+                return adding;
+            }
+
+            public IEnumerator<IRoute> GetEnumerator()
+            {
+                return routes.GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
         }
     }
 }

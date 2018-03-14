@@ -11,13 +11,12 @@ namespace MosMetroPathTest
     public class UnitTest1
     {
         private Scheme Scheme;
-        private Scheme TestScheme;
 
         public UnitTest1()
         {
-            Scheme = new Scheme();
-
             #region Схема московского метро
+
+            Scheme = new Scheme();
 
             var red = Scheme.AddLine(@"Сокольническая");
             var green = Scheme.AddLine(@"Замоскворецкая");
@@ -28,8 +27,11 @@ namespace MosMetroPathTest
             var butovo = Scheme.AddLine(@"Бутовская");
             var kahovskaya = Scheme.AddLine(@"Каховская");
             var lublino_dmitr = Scheme.AddLine(@"Люблинско-Дмитровская");
+            var kaluzhsko_rizh = Scheme.AddLine(@"Калужско-Рижская");
+            var tagansko_krasnopr = Scheme.AddLine(@"Таганско-Краснопресненская");
+            var kalin = Scheme.AddLine(@"Калининская");
 
-            // Серпуховско-Тимирязевская
+            #region Серпуховско-Тимирязевская
             gray
                 .AddStation(@"Бульвар Дмитрия Донского", out var don)
                 .RelationTo(@"Аннино", 140)
@@ -56,8 +58,9 @@ namespace MosMetroPathTest
                 .RelationTo(@"Отрадное", 150)
                 .RelationTo(@"Бибирево", 170)
                 .RelationTo(@"Алтуфьево", 160);
+            #endregion
 
-            // Замоскворецкая
+            #region Замоскворецкая
             green
                 .AddStation(@"Алма-Атинская")
                 .RelationTo(@"Красногвардейская", 360, out var krasnogvard)
@@ -70,7 +73,7 @@ namespace MosMetroPathTest
                 .RelationTo(@"Технопарк", 180)
                 .RelationTo(@"Автозаводская", 180, out var avtozavod)
                 .RelationTo(@"Павелецкая", 190, out var pavel_green)
-                .RelationTo(@"Новокузнецкая", 120)
+                .RelationTo(@"Новокузнецкая", 120, out var novokuz)
                 .RelationTo(@"Театральная", 140, out var teatral)
                 .RelationTo(@"Тверская", 100, out var tver)
                 .RelationTo(@"Маяковская", 80)
@@ -82,8 +85,9 @@ namespace MosMetroPathTest
                 .RelationTo(@"Водный стадион", 180)
                 .RelationTo(@"Речной вокзал", 140)
                 .RelationTo(@"Ховрино", 300);
+            #endregion
 
-            // Сокольническая
+            #region Сокольническая
             red
                 .AddStation(@"Бульвар Рокоссовского")
                 .RelationTo(@"Черкизовская", 130, out var cherkiz)
@@ -107,7 +111,9 @@ namespace MosMetroPathTest
                 .RelationTo(@"Тропарёво", 180)
                 .RelationTo(@"Румянцево", 180)
                 .RelationTo(@"Саларьево", 180);
-            // Кольцевая
+            #endregion
+            
+            #region Кольцевая
             ring
                 .AddStation(@"Парк культуры", out var park_kul_ring)
                 .RelationTo(@"Октябрьская", 100, out var oktyabr)
@@ -116,12 +122,14 @@ namespace MosMetroPathTest
                 .RelationTo(@"Таганская", 110, out var tagan_ring)
                 .RelationTo(@"Курская", 140, out var kursk_ring)
                 .RelationTo(@"Комсомольская", 160, out var komsomol_ring)
-                .RelationTo(@"Проспект Мира", 140)
+                .RelationTo(@"Проспект Мира", 140, out var prosp_mira_ring)
                 .RelationTo(@"Новослободская", 130, out var novoslob)
                 .RelationTo(@"Белорусская", 110, out var belorus_ring)
-                .RelationTo(@"Краснопресненская", 140)
+                .RelationTo(@"Краснопресненская", 140, out var krasnopres)
                 .RelationTo(@"Киевская", 150, out var kiev_ring);
-            // Филёвская
+            #endregion
+            
+            #region Филёвская
             fili
                 .AddStation(@"Кунцевская", out var kunzevo_fili)
                 .RelationTo(@"Пионерская", 110)
@@ -137,8 +145,9 @@ namespace MosMetroPathTest
             kiev_fili
                 .RelationTo(@"Выставочная", 300, out var vistav)
                 .RelationTo(@"Международная", 120, out var mezhdunarod);
-
-            // Арбатско-Покровская
+            #endregion
+            
+            #region Арбатско-Покровская
             blue
                 .AddStation(@"Щёлковская")
                 .RelationTo(@"Первомайская", 130)
@@ -152,7 +161,7 @@ namespace MosMetroPathTest
                 .RelationTo(@"Арбатская", 130, out var arbat_blue)
                 .RelationTo(@"Смоленская", 140)
                 .RelationTo(@"Киевская", 100, out var kiev_blue)
-                .RelationTo(@"Парк Победы", 240, out var park_blue)
+                .RelationTo(@"Парк Победы", 240, out var park_pobedi_blue)
                 .RelationTo(@"Славянский бульвар", 240)
                 .RelationTo(@"Кунцевская", 120, out var kunz_blue)
                 .RelationTo(@"Молодёжная", 170, out var molodezh)
@@ -162,8 +171,9 @@ namespace MosMetroPathTest
                 .RelationTo(@"Волоколамская", 180)
                 .RelationTo(@"Митино", 180)
                 .RelationTo(@"Пятницкое шоссе", 150);
-
-            // Бутовская
+            #endregion
+            
+            #region Бутовская
             butovo
                 .AddStation(@"Битцевский парк", out var bitz_park)
                 .RelationTo(@"Лесопарковая", 180)
@@ -172,14 +182,16 @@ namespace MosMetroPathTest
                 .RelationTo(@"Бульвар адмирала Ушакова", 100)
                 .RelationTo(@"Улица Горчакова", 120)
                 .RelationTo(@"Бунинская аллея", 130);
-
-            // Каховская
+            #endregion
+            
+            #region Каховская
             kahovskaya
                 .AddStation(@"Каширская", out var kashir_kah)
                 .RelationTo(@"Варшавская", 120)
                 .RelationTo(@"Каховская", 160, out var kah_kah);
+            #endregion
 
-            // Люблинско-Дмитровская
+            #region Люблинско-Дмитровская
             lublino_dmitr
                 .AddStation(@"Петровско-Разумовская", out var petr_razum_lubl)
                 .RelationTo(@"Фонвизинская", 180, out var fonviz)
@@ -201,6 +213,91 @@ namespace MosMetroPathTest
                 .RelationTo(@"Борисово", 180)
                 .RelationTo(@"Шипиловская", 120)
                 .RelationTo(@"Зябликово", 120, out var zyablik);
+            #endregion
+
+            #region Калужско-Рижская
+
+            kaluzhsko_rizh
+                .AddStation(@"Медведково")
+                .RelationTo(@"Бабушкинская", 150)
+                .RelationTo(@"Свиблово", 140)
+                .RelationTo(@"Ботанический сад", 110, out var botan_sad)
+                .RelationTo(@"ВДНХ", 190, out var vdnh)
+                .RelationTo(@"Алексеевская", 110)
+                .RelationTo(@"Рижская", 120)
+                .RelationTo(@"Проспект Мира", 110, out var prosp_mira_kaluzh)
+                .RelationTo(@"Сухаревская", 90)
+                .RelationTo(@"Тургеневская", 80, out var turgen)
+                .RelationTo(@"Китай-город", 100, out var kitay_kaluzh)
+                .RelationTo(@"Третьяковская", 150, out var tretyak_kaluzh)
+                .RelationTo(@"Октябрьская", 130, out var oktyabr_kaluzh)
+                .RelationTo(@"Шаболовская", 100)
+                .RelationTo(@"Ленинский проспект", 170, out var lenin_prosp)
+                .RelationTo(@"Академическая", 170)
+                .RelationTo(@"Профсоюзная", 110)
+                .RelationTo(@"Новые Черёмушки", 90)
+                .RelationTo(@"Калужская", 120)
+                .RelationTo(@"Беляево", 150)
+                .RelationTo(@"Коньково", 90)
+                .RelationTo(@"Тёплый стан", 130)
+                .RelationTo(@"Ясенево", 160)
+                .RelationTo(@"Новоясеневская", 130, out var novoyas);
+
+            #endregion
+
+            #region Таганско-Краснопресненская
+
+            tagansko_krasnopr
+                .AddStation(@"Планерная")
+                .RelationTo(@"Сходненская", 100)
+                .RelationTo(@"Тушинская", 190)
+                .RelationTo(@"Спартак", 120)
+                .RelationTo(@"Щукинская", 120)
+                .RelationTo(@"Октябрьское поле", 180, out var oktyabr_pole)
+                .RelationTo(@"Полежаевская", 190, out var polezh)
+                .RelationTo(@"Беговая", 130)
+                .RelationTo(@"Улица 1905 года", 110)
+                .RelationTo(@"Баррикадная", 110, out var barrikad)
+                .RelationTo(@"Пушкинская", 140, out var pushkin)
+                .RelationTo(@"Кузнецкий мост", 100, out var kuznez)
+                .RelationTo(@"Китай-город", 70, out var kitay_t)
+                .RelationTo(@"Таганская", 150, out var tagan_t)
+                .RelationTo(@"Пролетарская", 120, out var prolet)
+                .RelationTo(@"Волгоградский проспект", 130)
+                .RelationTo(@"Текстильщики", 230)
+                .RelationTo(@"Кузьминки", 160)
+                .RelationTo(@"Рязанский проспект", 180)
+                .RelationTo(@"Выхино", 150)
+                .RelationTo(@"Лермонтовский проспект", 240)
+                .RelationTo(@"Жулебино", 180)
+                .RelationTo(@"Котельники", 120);
+
+            #endregion
+
+            #region Калининская
+
+            kalin
+                .AddStation(@"Новокосино")
+                .RelationTo(@"Новогиреево", 180)
+                .RelationTo(@"Перово", 140)
+                .RelationTo(@"Шоссе Энтузиастов", 220)
+                .RelationTo(@"Авиамоторная", 130, out var aviamotor)
+                .RelationTo(@"Площадь Ильича", 160, out var ploshad_ilicha)
+                .RelationTo(@"Марксистская", 150, out var marks)
+                .RelationTo(@"Третьяковская", 140, out var tretyak_kalin);
+            kalin
+                .AddStation(@"Раменки")
+                .RelationTo(@"Ломоносовский проспект", 120)
+                .RelationTo(@"Минская", 240)
+                .RelationTo(@"Парк Победы", 240, out var park_pobedi_kalin)
+                .RelationTo(@"Шелепиха", 270, out var shelep)
+                .RelationTo(@"Хорошевская", 250, out var horoshevskaya)
+                .RelationTo(@"ЦСКА", 140, out var cska_kalin)
+                .RelationTo(@"Петровский парк", 160, out var petrov_park);
+
+            #endregion
+
+            #region Переходы между ветками
 
             Scheme.AddRelation(borov, biblioteka, 240);             // Библиотека им. Ленина -> Боровицкая
             Scheme.AddRelation(serpuh, dobrin, 360);                // Серпуховская -> Добрынинская
@@ -235,36 +332,30 @@ namespace MosMetroPathTest
             Scheme.AddRelation(trub, tzhvetnoy, 300);               // Цветной бульвар -> Трубная
             Scheme.AddRelation(petr_razum_lubl, petrovsko, 180);    // Петровско-Разумовская -> Петровско-Разумовская
 
+            Scheme.AddRelation(prosp_mira_kaluzh, prosp_mira_ring, 300);    // Проспект Мира -> Проспект Мира
+            Scheme.AddRelation(turgen, prudi, 300);                         // Тургеневская -> Чистые пруды
+            Scheme.AddRelation(turgen, sret_bul, 300);                      // Тургеневская -> Сретенский бульвар
+            Scheme.AddRelation(oktyabr_kaluzh, oktyabr, 300);               // Октябрьская -> Октябрьская
+            Scheme.AddRelation(novoyas, bitz_park, 120);                    // Новоясеневская -> Битцевский парк
+
+            Scheme.AddRelation(barrikad,krasnopres, 330);           // Баррикадная -> Краснопресненская
+            Scheme.AddRelation(pushkin,tver, 360);                  // Тверская -> Пушкинская
+            Scheme.AddRelation(pushkin,chehov, 360);                // Пушкинская -> Чеховская
+            Scheme.AddRelation(kuznez, lubyanka, 240);              // Кузнецкий мост -> Лубянка
+            Scheme.AddRelation(kitay_t, kitay_kaluzh, 120);         // Китай-город -> Китай-город
+            Scheme.AddRelation(tagan_t, tagan_ring, 360);           // Таганская -> Таганская
+            Scheme.AddRelation(prolet,krest_zast, 330);             // Пролетарская -> Крестьянская застава
+
+            Scheme.AddRelation(ploshad_ilicha, rim, 360);           // Площадь Ильича -> Римская
+            Scheme.AddRelation(marks, tagan_ring, 240);             // Марксистская -> Таганская (кольцо)
+            Scheme.AddRelation(marks, tagan_t, 390);                // Таганская -> Марксистская
+
+            Scheme.AddRelation(tretyak_kalin, tretyak_kaluzh, 180); // Третьяковская -> Третьяковская
+            Scheme.AddRelation(tretyak_kalin, novokuz, 240);        // Третьяковская -> Новокузнецкая
+            Scheme.AddRelation(park_pobedi_kalin, park_pobedi_blue, 60);    // Парк Победы -> Парк Победы
+            Scheme.AddRelation(horoshevskaya, polezh, 180);         // Хорошевская -> Полежаевская
+
             #endregion
-
-            #region Тестовая схема
-
-            TestScheme = new Scheme();
-
-            var lineGreen = TestScheme.AddLine("green");
-            var lineRed = TestScheme.AddLine("red");
-            var lineYellow = TestScheme.AddLine("yellow");
-
-            lineGreen
-                .AddStation(@"green1")
-                .RelationTo(@"green2", 10, out var green2)
-                .RelationTo(@"green3", 15);
-
-            lineRed
-                .AddStation(@"red1", out var red1)
-                .RelationTo(@"red2", 12)
-                .RelationTo(@"red3", 15, out var red3)
-                .RelationTo(@"red4", 10);
-
-            lineYellow
-                .AddStation(@"yellow1")
-                .RelationTo(@"yellow2", 22, out var yellow2)
-                .RelationTo(@"yellow3", 10)
-                .RelationTo(@"yellow4", 40);
-
-            TestScheme.AddRelation(green2, red1, 8);
-            TestScheme.AddRelation(red1, yellow2, 18);
-            TestScheme.AddRelation(yellow2, green2,30);
 
             #endregion
         }
@@ -322,13 +413,53 @@ namespace MosMetroPathTest
         }
 
         [TestMethod]
-        public void TestVisitAllLinesOnTest()
+        public void TestVisitAllLinesByBranchAndBound()
         {
-            var routes = new SchemeVisitor().VisitAllLines(TestScheme);
+            var routes = new SchemeVisitor().VisitAllLinesByBranchAndBound(Scheme);
             foreach (var r in routes)
             {
                 WriteRoute(r);
             }
+        }
+
+        [TestMethod]
+        public void TestRoute()
+        {
+            var scheme = new Scheme();
+            var line1 = scheme.AddLine(@"line1");
+            var line2 = scheme.AddLine(@"line2");
+            var line3 = scheme.AddLine(@"line3");
+            var line4 = scheme.AddLine(@"line4");
+            var line5 = scheme.AddLine(@"line5");
+            var s1 = line1.AddStation(@"s1");
+            var s2 = line2.AddStation(@"s2");
+            var s3 = line3.AddStation(@"s3");
+            var s4 = line4.AddStation(@"s4");
+            var s5 = line5.AddStation(@"s5");
+            var s1s2 = scheme.AddRelation(s1, s2, 20);
+            var s1s3 = scheme.AddRelation(s1, s3, 18);
+            var s1s4 = scheme.AddRelation(s1, s4, 12);
+            var s1s5 = scheme.AddRelation(s1, s4, 8);
+            var s2s3 = scheme.AddRelation(s2, s3, 14);
+            var s2s4 = scheme.AddRelation(s2, s4, 7);
+            var s2s5 = scheme.AddRelation(s2, s5, 11);
+            var s3s4 = scheme.AddRelation(s3, s4, 6);
+            var s3s5 = scheme.AddRelation(s3, s5, 11);
+            var s4s5 = scheme.AddRelation(s4, s5, 12);
+
+            var routes = new List<IRoute>();
+            routes.Add(s1s2);
+            routes.Add(s1s3);
+            routes.Add(s1s4);
+            routes.Add(s1s5);
+            routes.Add(s2s3);
+            routes.Add(s2s4);
+            routes.Add(s2s5);
+            routes.Add(s3s4);
+            routes.Add(s3s5);
+            routes.Add(s4s5);
+
+            var r = new SchemeVisitor().VisitAllLinesByBranchAndBound(scheme);
         }
 
         [TestMethod]

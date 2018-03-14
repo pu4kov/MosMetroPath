@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace MosMetroPath
 {
@@ -11,18 +12,13 @@ namespace MosMetroPath
         /// <summary>
         /// Элемент маршрута
         /// </summary>
+        [DebuggerDisplay("{From.Name} -> {To.Name} (reversed: {IsReversed})")]
         private class RouteNode
         {
             /// <summary>
             /// Текущая станция
             /// </summary>
             public IRoute Route { get; set; }
-            /*
-            /// <summary>
-            /// Времени до следующей станции
-            /// </summary>
-            public int Timespan { get; set; }
-            */
             /// <summary>
             /// Если true - текущий маршрут нужно развернуть
             /// </summary>

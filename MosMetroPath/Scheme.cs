@@ -22,7 +22,7 @@ namespace MosMetroPath
         /// <summary>
         /// Переходы между ветками
         /// </summary>
-        private IDictionary<Line, ICollection<Station>> LineRelationStations { get; } = new Dictionary<Line, ICollection<Station>>();
+        private IDictionary<Line, ISet<Station>> LineRelationStations { get; } = new Dictionary<Line, ISet<Station>>();
         /// <summary>
         /// Связи станции
         /// </summary>
@@ -35,10 +35,6 @@ namespace MosMetroPath
 
         public IEnumerable<Line> GetLinesExclude(IEnumerable<Line> excluded)
         {
-            /*
-            var result = new HashSet<Line>(Lines);
-            result.ExceptWith(excluded);
-            return result;*/
             return Lines.Except(excluded).ToArray();
         }
 
@@ -70,18 +66,18 @@ namespace MosMetroPath
             if (relation.From.Line == relation.To.Line)
                 throw new ArgumentException();
 
-            ICollection<Station> r1;
+            ISet<Station> r1;
             if (!LineRelationStations.TryGetValue(relation.From.Line, out r1))
             {
-                r1 = new List<Station>();
+                r1 = new HashSet<Station>();
                 LineRelationStations.Add(relation.From.Line, r1);
             }
             r1.Add(relation.From);
 
-            ICollection<Station> r2;
+            ISet<Station> r2;
             if (!LineRelationStations.TryGetValue(relation.To.Line, out r2))
             {
-                r2 = new List<Station>();
+                r2 = new HashSet<Station>();
                 LineRelationStations.Add(relation.To.Line, r2);
             }
             r2.Add(relation.To);

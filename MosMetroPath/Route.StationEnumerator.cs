@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,65 +8,24 @@ namespace MosMetroPath
 {
     public partial class Route
     {
-        private class StationEnumerator : IEnumerator<Station>
+        private class StationEnumerator: Enumerator<Station>
         {
-            private Route _route;
-            private RouteNode _currentRoute;
-            private IEnumerator<Station> _currentStations;
-
-            public Station Current => _currentStations.Current;
-            object IEnumerator.Current => Current;
-
-            public bool IsReverse { get; }
-
-            public StationEnumerator(Route route, bool reverse)
+            public StationEnumerator(RouteNode start, bool reverse)
+                :base(start, reverse, (node) =>
+                {/*
+                    if (reverse)
+                        return node.Route.GetStations(node.IsReversed ^ reverse).Reverse().GetEnumerator();*/
+                    return node.Route.GetStations(node.IsReversed ^ reverse).GetEnumerator();
+                })
             {
-                _route = route;
-                IsReverse = reverse;
-                Reset();
+
             }
 
-            public void Dispose()
+            protected override void OnMoveNextNode()
             {
-                
-            }
+                base.OnMoveNextNode();
 
-            public bool MoveNext()
-            {
-                while (!_currentStations.MoveNext())
-                {
-                    if (IsReverse)
-                    {
-                        if (_currentRoute.Prior == null)
-                            return false;
-                        else
-                            _currentRoute = _currentRoute.Prior;
-                    }
-                    else
-                    {
-                        if (_currentRoute.Next == null)
-                            return false;
-                        else
-                            _currentRoute = _currentRoute.Next;
-                    }
-
-                    _currentStations = _currentRoute.Route.GetStations(IsReverse).GetEnumerator();
-                }
-
-                return true;
-            }
-
-            public void Reset()
-            {
-                if (IsReverse)
-                {
-                    _currentRoute = _route.Last;
-                }
-                else
-                {
-                    _currentRoute = _route.First;
-                }
-                _currentStations = _currentRoute.Route.GetStations(IsReverse).GetEnumerator();
+                CurrentEnumerator.MoveNext();   // Пропуск первой станции, т.к. она уже была в конце предыдущего маршрута
             }
         }
     }

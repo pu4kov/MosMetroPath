@@ -11,7 +11,7 @@ namespace MosMetroPath
     /// <summary>
     /// Связь между двумя станциями (ж/д путь, переход)
     /// </summary>
-    [DebuggerDisplay("{From?.Name} -> {To?.Name}: {Timespan}")]
+    [DebuggerDisplay("{From.Name} -> {To.Name} ({Timespan} сек.)")]
     public class StationRelation: IRoute
     {
         private Station[] _stations;
@@ -75,12 +75,29 @@ namespace MosMetroPath
 
         public IEnumerable<Station> GetStations(bool reverse = false)
         {
-            return (reverse) ? _stations.Reverse() : _stations;
+            return (reverse) ? new Station[] { To, From } : _stations;
         }
 
         public IEnumerable<IRoute> GetRoutes(bool reverse = false)
         {
-            return Enumerable.Empty<IRoute>();
+            if (reverse)
+                return new IRoute[] { new StationRelation(To, From, Timespan) };
+            return new IRoute[] { this };
+        }
+
+        public IEnumerator<Station> GetEnumerator()
+        {
+            return GetStations(false).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public bool HasStation(Station station)
+        {
+            return _stations[0].Equals(station) || _stations[1].Equals(station);
         }
     }
 }

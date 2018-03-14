@@ -42,8 +42,7 @@ namespace MosMetroPath
             RoutesCollection<Station> routes;
             if (!Routes.TryGetValue(key, out routes))
             {
-                routes = new RoutesCollection<Station>(
-                    r => new TwoItemsKey<Station>(r.From, r.To));
+                routes = new RoutesCollection<Station>(r => new TwoItemsKey<Station>(r.From, r.To));
                 Routes.Add(key, routes);
             }
             
@@ -81,7 +80,14 @@ namespace MosMetroPath
         public IEnumerable<IRoute> GetRoutes(Station from, Line to)
         {
             var key = GetKey(from.Line, to);
-            var routes = Routes[key].Where(r => r.From == from || r.To == from).ToArray();
+            var allRoutes = Routes[key];
+            var routes = allRoutes
+                .Where(r => r.From == from)
+                .Union(allRoutes)
+                .Where(r => r.To == from)
+                .Select(r => new Route(r, true))
+                .OrderByDescending(r => r.GetLines().Count())
+                .ToArray();
 
             return routes;
         }

@@ -11,7 +11,7 @@ namespace MosMetroPath
     /// <summary>
     /// Маршрут
     /// </summary>
-    [DebuggerDisplay("[{Length}] {From.Name} -> {To.Name} ({Timespan} секунд)")]
+    [DebuggerDisplay("[{Length} станций] {From.Name} -> {To.Name} ({Timespan} сек.)")]
     public partial class Route: IRoute
     {
         /// <summary>
@@ -59,15 +59,20 @@ namespace MosMetroPath
             };
             Last = First;
             OnAddRoute(route);
+            ++Length;
         }
 
         protected virtual void OnAddRoute(IRoute route)
         {
             Timespan += route.Timespan;
-            Length += route.Length;
+            Length += route.Length - 1;
             Lines.UnionWith(route.GetLines());
         }
 
+        /// <summary>
+        /// Добавление маршрута в начало текущего (с автоповоротом добавляемого маршрута)
+        /// </summary>
+        /// <param name="route">Добавляемый маршрут</param>
         public void AddFirst(IRoute route)
         {
             // Определение необходимости разворота маршрута
@@ -93,6 +98,10 @@ namespace MosMetroPath
             OnAddRoute(route);
         }
 
+        /// <summary>
+        /// Добавление маршрута в конец текущего (с автоповоротом добавляемого маршрута)
+        /// </summary>
+        /// <param name="route">Добавляемый маршрут</param>
         public void AddLast(IRoute route)
         {
             // Определение необходимости разворота маршрута
@@ -103,6 +112,12 @@ namespace MosMetroPath
                 reverse = false;
             else
                 throw new ArgumentOutOfRangeException(nameof(route));
+
+            if (route.Length == 2)
+            {
+                route = new StationRelation(To, (reverse) ? route.From : route.To, route.Timespan);
+                reverse = false;
+            }
 
             var newNode = new RouteNode
             {
@@ -120,6 +135,12 @@ namespace MosMetroPath
 
         public IEnumerable<Line> GetLines() => Lines;
 
+        /// <summary>
+        /// Создание нового маршрута, путём добавления маршрута справа к исходному маршруту (при необходимости, с поворотом добавляемого маршрута)
+        /// </summary>
+        /// <param name="a">Исходный маршрут</param>
+        /// <param name="b">Добавляемый маршрут</param>
+        /// <returns>Полученный маршрут</returns>
         public static Route Union(IRoute a, IRoute b)
         {
             var result = new Route(a, false);
@@ -128,14 +149,75 @@ namespace MosMetroPath
             return result;
         }
 
-        public IEnumerable<Station> GetStations(bool reverse = false)
+        public IEnumerable<Station> GetStations(bool reverse)
         {
-            return new Enumerable<Station>(() => new StationEnumerator(this, reverse));
+            if (First == Last)
+                return First.Route.GetStations(First.IsReversed ^ reverse);
+
+            var startNode = (reverse) ? Last : First;
+            
+            return new Enumerable<Station>(
+                () =>
+                {
+                    return new StationEnumerator(startNode, reverse);
+                });
         }
 
-        public IEnumerable<IRoute> GetRoutes(bool reverse = false)
+        public IEnumerable<IRoute> GetRoutes(bool reverse)
         {
-            return new Enumerable<IRoute>(() => new RouteEnumerator(this, reverse));
+            if (First == Last)
+                return First.Route.GetRoutes(First.IsReversed ^ reverse);
+
+            var startNode = (reverse) ? Last : First;
+            
+            return new Enumerable<IRoute>(
+                () =>
+                {
+                    return new Enumerator<IRoute>(startNode, reverse,
+                        (node) =>
+                        {
+                            return node.Route.GetRoutes(node.IsReversed ^ reverse).GetEnumerator();
+                        });
+                });
+        }
+
+        public override int GetHashCode()
+        {
+            return From.Id + To.Id;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is IRoute other)
+            {
+                if (((From == other.From && To == other.To)
+                    || (To == other.From && From == other.To))
+                    && Length == other.Length
+                    && Timespan == other.Timespan)
+                {
+                    var thisRoutes = GetRoutes(false);
+                    var otherRoutes = (From == other.From) ? other.GetRoutes(false) : other.GetRoutes(true);
+
+                    return (thisRoutes.Count() == otherRoutes.Count()) && (thisRoutes.Intersect(otherRoutes).FirstOrDefault() == null);
+                }
+                return false;
+            }
+            return base.Equals(obj);
+        }
+
+        public IEnumerator<Station> GetEnumerator()
+        {
+            return GetStations(false).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public bool HasStation(Station station)
+        {
+            return GetStations(false).FirstOrDefault(s => s.Equals(station)) != null;
         }
     }
 }

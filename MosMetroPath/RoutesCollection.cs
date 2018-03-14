@@ -14,7 +14,7 @@ namespace MosMetroPath
     internal class RoutesCollection<TKey>: IEnumerable<IRoute>
         where TKey: class, IId
     {
-        private Dictionary<TwoItemsKey<TKey>, IRoute> Routes { get; set; } = new Dictionary<TwoItemsKey<TKey>, IRoute>();
+        private Dictionary<TwoItemsKey<TKey>, IRoute> Routes { get; } = new Dictionary<TwoItemsKey<TKey>, IRoute>();
 
         public IRoute this[TKey s1, TKey s2]
         {
@@ -32,10 +32,15 @@ namespace MosMetroPath
         private Func<IRoute, TwoItemsKey<TKey>> _getKey;
         public RoutesCollection(Func<IRoute, TwoItemsKey<TKey>> getKey)
         {
+            Routes = new Dictionary<TwoItemsKey<TKey>, IRoute>();
             _getKey = getKey;
         }
 
-            
+        public RoutesCollection(RoutesCollection<TKey> other)
+        {
+            Routes = new Dictionary<TwoItemsKey<TKey>, IRoute>(other.Routes);
+            _getKey = other._getKey;
+        }
 
         internal static TwoItemsKey<TKey> GetKey(TKey s1, TKey s2)
         {
