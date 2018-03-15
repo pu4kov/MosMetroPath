@@ -12,7 +12,26 @@ namespace MosMetroPath
     /// </summary>
     public class RouteBuilder
     {
-        private List<RouteMatrix> Completed { get; } = new List<RouteMatrix>();
+        private RouteMatrix _completed;
+        private RouteMatrix Completed
+        {
+            get
+            {
+                return _completed;
+            }
+            set
+            {
+                if (value.State == RouteMatrixState.IsComplete)
+                {
+                    if (Completed == null
+                        || Completed.MinTimespan > value.MinTimespan)
+                    {
+                        _completed = value;
+                        Leaves.Clear();
+                    }
+                }
+            }
+        }
         /// <summary>
         /// "Листья" дерева поиска
         /// </summary>
@@ -20,55 +39,32 @@ namespace MosMetroPath
         /// <summary>
         /// Минимально возможная длина маршрута
         /// </summary>
-        public int MinLength { get; private set; }
+        public int MinTimespan
+        {
+            get
+            {
+                if (Completed != null)
+                {
+                    return Completed.MinTimespan;
+                }
+                else if (Leaves.First != null)
+                {
+                    return Leaves.First.Value.Matrix.MinTimespan;
+                }
+                else
+                {
+                    return int.MaxValue;
+                }
+            }
+        }
         public bool IsComplete { get; private set; }
-        public int RoutesCount => Completed.Count;
-        public int RoutesTimespan => (Completed.Count > 0) ? Completed[0].MinLength : int.MaxValue;
+        public bool HasResult => Completed != null;
+        public int RoutesTimespan => (Completed != null) ? Completed.MinTimespan : int.MaxValue;
 
         public RouteBuilder(IEnumerable<IRoute> routes)
         {
             var _rootNode = new RouteBuilderNode(new RouteMatrix(routes));
             Leaves.AddFirst(_rootNode);
-            MinLength = _rootNode.Matrix.MinLength;
-        }
-
-        private void AddCompleted(RouteBuilderNode node)
-        {
-            bool added = false;
-            if (Completed.Count > 0
-                && Completed[0].MinLength > node.Matrix.MinLength)
-            {
-                Completed.Clear();
-
-                MinLength = node.Matrix.MinLength;
-
-                added = true;
-            }
-            else if (Completed.Count == 0
-                || Completed[0].MinLength == node.Matrix.MinLength)
-            {
-                added = true;
-            }
-            
-            if (added)
-            {
-                Completed.Add(node.Matrix);
-
-                var n = Leaves.Last;
-                while (n != null)
-                {
-                    if (n.Value.Matrix.MinLength >= node.Matrix.MinLength)
-                    {
-                        var tmp = n.Previous;
-                        Leaves.Remove(n);
-                        n = tmp;
-                    }
-                    else
-                    {
-                        n = n.Previous;
-                    }
-                }
-            }
         }
 
         private void AddLeave(RouteBuilderNode node)
@@ -83,27 +79,25 @@ namespace MosMetroPath
             }
             else
             {
-                if (Leaves.First.Value.Matrix.MinLength >= node.Matrix.MinLength)
-                {   // node - лучшая матрица, добавление в начало
+                var compareFirst = node.CompareTo(Leaves.First.Value);
+                if (compareFirst <= 0)
+                {
                     Leaves.AddFirst(node);
-                    if (MinLength > node.Matrix.MinLength)
-                    {
-                        MinLength = node.Matrix.MinLength;
-                    }
-                }
-                else if (Leaves.Last.Value.Matrix.MinLength <= node.Matrix.MinLength)
-                {   // node - худшая матрица, добавление в конец
-                    Leaves.AddLast(node);
                 }
                 else
-                { // добавление в середину
-                    var n = Leaves.First;
-                    while (n != null
-                        && n.Value.Matrix.MinLength < node.Matrix.MinLength)
+                {
+                    var compareLast = node.CompareTo(Leaves.Last.Value);
+                    if (compareLast > 0)
                     {
-                        n = n.Next;
+                        Leaves.AddLast(node);
                     }
-                    Leaves.AddBefore(n, node);
+                    else
+                    {
+                        var n = Leaves.First.Next;
+                        while (node.CompareTo(n.Value) > 0)
+                            n = n.Next;
+                        Leaves.AddBefore(n, node);
+                    }
                 }
             }
         }
@@ -115,7 +109,8 @@ namespace MosMetroPath
             switch (node.Matrix.State)
             {
                 case RouteMatrixState.IsComplete:
-                    AddCompleted(node);
+                    Completed = node.Matrix;
+                    IsComplete = true;
                     break;
                 case RouteMatrixState.Process:
                     AddLeave(node);
@@ -170,44 +165,36 @@ namespace MosMetroPath
         {
             if (IsComplete)
                 return false;
-            bool next = true;
-            do
-            {
-                var node = Pop();
-                
-                if (node.NextTurn())
-                {
-                    Add(node.ExcludeEdgeNode);
-                    Add(node.IncludeEdgeNode);
-                }
-                else if (node.Matrix.State == RouteMatrixState.IsComplete)
-                {
-                    AddCompleted(node);
-                    
-                    next = false;
-                }
-                if (Leaves.Count == 0)
-                    IsComplete = true;
-            }
-            while (!IsComplete && next);
 
-            return !IsComplete || !next;
-        }
-        
-        public IEnumerable<IRoute> GetRoutes()
-        {
-            var result = new List<IRoute>(Completed.Count);
-            
-            foreach (var r in Completed)
-                result.Add(BuildRoute(r.PassedRoutes));
+            var node = Pop();
+
+            var result = node.NextTurn();
+
+            if (result)
+            {
+                Add(node.ExcludeEdgeNode);
+                Add(node.IncludeEdgeNode);
+            }
+            else if (node.Matrix.State == RouteMatrixState.IsComplete)
+            {
+                Completed = node.Matrix;
+                IsComplete = true;
+            }
 
             return result;
         }
-
-        [DebuggerDisplay("MinLength = {Key}, State = {Matrix.State}")]
-        private class RouteBuilderNode
+        
+        public IRoute GetRoute()
         {
-            public int Key => Matrix.MinLength;
+            if (Completed == null)
+                throw new Exception();
+
+            return BuildRoute(Completed.PassedRoutes);
+        }
+
+        [DebuggerDisplay("MinTimespan = {Matrix.MinTimespan}, State = {Matrix.State}, {Matrix.ColumnsCountx{Matrix.RowsCount}")]
+        private class RouteBuilderNode: IComparable<RouteBuilderNode>
+        {
             public RouteMatrix Matrix { get; }
             public RouteBuilderNode IncludeEdgeNode { get; private set; }
             public RouteBuilderNode ExcludeEdgeNode { get; private set; }
@@ -241,13 +228,23 @@ namespace MosMetroPath
                     ExcludeEdgeNode = new RouteBuilderNode(Matrix.ExcludeEdge(edge));
                     
                     if (IncludeEdgeNode.Matrix.State == RouteMatrixState.IsComplete
-                        && ExcludeEdgeNode.Matrix.MinLength >= IncludeEdgeNode.Matrix.MinLength)
+                        && ExcludeEdgeNode.Matrix.MinTimespan >= IncludeEdgeNode.Matrix.MinTimespan)
                         ExcludeEdgeNode = null;
 
                     return true;
                 }
 
                 return false;
+            }
+
+            public int CompareTo(RouteBuilderNode other)
+            {
+                int result = Matrix.MinTimespan - other.Matrix.MinTimespan;
+                if (result == 0)
+                {
+                    result = (Matrix.ColumnsCount * Matrix.RowsCount) - (other.Matrix.ColumnsCount * other.Matrix.RowsCount);
+                }
+                return result;
             }
         }
     }

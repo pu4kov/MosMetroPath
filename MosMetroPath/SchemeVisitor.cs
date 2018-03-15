@@ -225,20 +225,15 @@ namespace MosMetroPath
             var cache = new RoutesCollection<Station>((r) => new TwoItemsKey<Station>(r.From, r.To));
             var visitor = new AllLinesVisitor();
 
-            ActionBlock<IEnumerable<IRoute>> addRouteAction = new ActionBlock<IEnumerable<IRoute>>(
-                (routes) =>
-                {
-                    visitor.Push(routes);
-                },
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4 });
-
             int counter = 0;
+            int skipped = 0;
 
             bool next = true;
             do
             {
                 // Обработка станций
                 var routes = new List<IRoute>();
+                
                 for (int fromLineId = 0; fromLineId < indeces.Length - 1; ++fromLineId)
                 {
                     var fromStation = linesStations[fromLineId][indeces[fromLineId]];
@@ -255,13 +250,13 @@ namespace MosMetroPath
                         routes.Add(route);
                     }
                 }
-                addRouteAction.Post(routes);
+                visitor.Push(routes);
                 counter++;
-                
+                /*
                 // ограничение маршрутов для тестирования
                 if (counter > 10)
                     next = false;
-                
+                */
                 // Переход к следующей комбинации
                 var lineInd = lastLineInd;
                 do
@@ -288,13 +283,10 @@ namespace MosMetroPath
                 while (lineInd >= 0);
             }
             while (next);
+            visitor.Complete();
+            visitor.Completion.Wait();
 
-            addRouteAction.Complete();
-            addRouteAction.Completion.Wait();
-
-            visitor.Run();
-
-            return visitor.Results;
+            return visitor.GetResults();
         }
 
         private class TimespanCounter

@@ -6,94 +6,146 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using System.Collections;
 
 namespace MosMetroPath
 {
     public class AllLinesVisitor
     {
-        public LinkedList<RouteBuilder> Builders { get; } = new LinkedList<RouteBuilder>();
-        public LinkedList<IRoute> Results { get; } = new LinkedList<IRoute>();
-        private object lockObj = new object();
+        const int AddBuilderMaxDegreeOfParallelism = 4;
+        const int AddBuilderBoundedCapacity = 10000;
+        const int SearchRouteMaxDegreeOfParallelism = 4;
+        const int SearchRouteBoundedCapacity = 1000;
 
-        private void AddResult(RouteBuilder r)
+        public Task Completion { get; private set; }
+        private TransformBlock<CreateBlockParam, SearchBlockParam> _addBuilder;
+        private ActionBlock<SearchBlockParam> _searchRoute;
+        private ResultCollection Results = new ResultCollection();
+        public int CurrentTimespan => Results.Timespan;
+
+        public AllLinesVisitor()
         {
-            if (!r.IsComplete)
-                throw new ArgumentException();
-            if (r.RoutesCount == 0)
-                return;
-
-            if (Results.First != null)
-            {
-                var timespan = r.RoutesTimespan;
-                if (Results.First.Value.Timespan > timespan)
+            _addBuilder = new TransformBlock<CreateBlockParam, SearchBlockParam>(
+                p => new SearchBlockParam
                 {
-                    Results.Clear();
-                }
-                else if (Results.First.Value.Timespan < timespan)
-                {
-                    return;
-                }
-            }
+                    Builder = new RouteBuilder(p.Routes),
+                    Results = p.Results
+                },
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = AddBuilderMaxDegreeOfParallelism, BoundedCapacity = AddBuilderBoundedCapacity });
 
-            foreach (var rr in r.GetRoutes())
-                Results.AddLast(rr);
+            _searchRoute = new ActionBlock<SearchBlockParam>(
+                (p) =>
+                {
+                    bool next = true;
+                    do
+                    {
+                        if (p.Builder.NextTurn())
+                        {
+                            if (!p.Results.CanAdded(p.Builder.MinTimespan))
+                            {
+                                next = false;
+                            }
+                        }
+                        else
+                        {
+                            next = false;
+                            if (p.Builder.HasResult)
+                            {
+                                p.Results.Add(p.Builder.GetRoute());
+                            }
+                        }
+                    }
+                    while (next);
+                },
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = SearchRouteMaxDegreeOfParallelism, BoundedCapacity = SearchRouteBoundedCapacity });
+
+            _addBuilder.LinkTo(_searchRoute);
+        }
+
+        public IEnumerable<IRoute> GetResults()
+        {
+            return Results;
         }
 
         public void Push(IEnumerable<IRoute> routes)
         {
-            Push(new RouteBuilder(routes));
+            _addBuilder.Post(new CreateBlockParam { Routes = routes, Results = Results });
         }
 
-        private void Push(RouteBuilder newBuilder)
+        public void Complete()
         {
-            lock (lockObj)
+            _addBuilder.Complete();
+
+            Completion = CompletionReceive();
+        }
+
+        private async Task CompletionReceive()
+        {
+            await _addBuilder.Completion;
+            _searchRoute.Complete();
+            await _searchRoute.Completion;
+        }
+        
+        public struct CreateBlockParam
+        {
+            public IEnumerable<IRoute> Routes;
+            public ResultCollection Results;
+        }
+
+        public struct SearchBlockParam
+        {
+            public RouteBuilder Builder;
+            public ResultCollection Results;
+        }
+
+        public class ResultCollection: IEnumerable<IRoute>
+        {
+            private List<IRoute> _items = new List<IRoute>();
+            private int _timespan = int.MaxValue;
+            public int Timespan
             {
-                var node = Builders.First;
-                if (node != null)
+                get => _timespan;
+                set
                 {
-                    if (node.Value.MinLength == newBuilder.MinLength)
-                    {
-                        Builders.AddLast(newBuilder);
-                    }
-                    else if (node.Value.MinLength > newBuilder.MinLength)
-                    {
-                        Builders.Clear();
-                        Builders.AddFirst(newBuilder);
-                    }
-                }
-                else
-                {
-                    Builders.AddFirst(newBuilder);
+                    Interlocked.Exchange(ref _timespan, value);
                 }
             }
-        }
 
-        private RouteBuilder Pop()
-        {
-            if (Interlocked.Equals(Builders.First, null))
-                return null;
-            lock (lockObj)
+            private object _lockObj = new object();
+
+            public bool CanAdded(int minTimespan)
             {
-                var result = Builders.First.Value;
-                Builders.RemoveFirst();
-                return result;
+                return Timespan >= minTimespan;
             }
-        }
 
-        public void Run()
-        {
-            var r = Pop();
-            while (r != null)
+            public void Add(IRoute route)
             {
-                if (r.NextTurn())
+                if (Timespan >= route.Length)
                 {
-                    Push(r);
+                    lock (_lockObj)
+                    {
+                        if (Timespan > route.Length)
+                        {
+                            _items.Clear();
+                            _items.Add(route);
+                            Timespan = route.Timespan;
+                        }
+                        else if (Timespan == route.Length)
+                        {
+                            _items.Add(route);
+                        }
+                    }
                 }
-                else
-                {
-                    AddResult(r);
-                }
-                r = Pop();
+            }
+
+            public IEnumerator<IRoute> GetEnumerator()
+            {
+                return _items.GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
             }
         }
     }

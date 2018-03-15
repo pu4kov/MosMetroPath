@@ -17,7 +17,7 @@ namespace MosMetroPath
         Unreachable // Маршрут недостижим
     }
 
-    [DebuggerDisplay("MinLength = {MinLength} [{ColumnsCount}x{RowsCount}]")]
+    [DebuggerDisplay("MinTimespan = {MinTimespan} [{ColumnsCount}x{RowsCount}]")]
     public partial class RouteMatrix
     {
         private MatrixValue[,] Items { get; }
@@ -25,12 +25,12 @@ namespace MosMetroPath
 
         private List<IRoute> _passedRoutes = new List<IRoute>();
         public IEnumerable<IRoute> PassedRoutes => _passedRoutes;
-        private int BaseMinLength { get; set; }
-        private int CurrentMinLength { get; set; }
+        private int BaseMinTimespan { get; set; }
+        private int CurrentMinTimespan { get; set; }
         /// <summary>
         /// Минимально возможная длина маршрута (Нижняя граница)
         /// </summary>
-        public int MinLength  => BaseMinLength + CurrentMinLength;
+        public int MinTimespan  => BaseMinTimespan + CurrentMinTimespan;
         public RouteMatrixState State { get; private set; } = RouteMatrixState.Process;
 
         public int ColumnsCount => Headers.ColumnsCount;
@@ -72,7 +72,7 @@ namespace MosMetroPath
 
         public RouteMatrix(RouteMatrix matrix, MatrixCoord excluded)
         {
-            BaseMinLength = matrix.MinLength;
+            BaseMinTimespan = matrix.MinTimespan;
             _passedRoutes.AddRange(matrix.PassedRoutes);
             State = RouteMatrixState.Process;
             Headers = matrix.Headers;
@@ -88,20 +88,20 @@ namespace MosMetroPath
             Items[excluded.Col, excluded.Row].SetInfinity();
         }
 
-        private RouteMatrix(MatrixHeaders headers, ICollection<IRoute> passedRoutes, int baseMinLength, RouteMatrixState state = RouteMatrixState.Process)
+        private RouteMatrix(MatrixHeaders headers, ICollection<IRoute> passedRoutes, int baseMinTimespan, RouteMatrixState state = RouteMatrixState.Process)
         {   
-            if (baseMinLength <= 0)
-                throw new ArgumentOutOfRangeException(nameof(baseMinLength));
+            if (baseMinTimespan <= 0)
+                throw new ArgumentOutOfRangeException(nameof(baseMinTimespan));
             if (passedRoutes != null)
                 _passedRoutes.AddRange(passedRoutes);
-            BaseMinLength = baseMinLength;
+            BaseMinTimespan = baseMinTimespan;
             State = state;
             if (State == RouteMatrixState.IsComplete)
             {
                 var len = 0;
                 foreach (var r in PassedRoutes)
                     len += r.Timespan;
-                CurrentMinLength = len - BaseMinLength;
+                CurrentMinTimespan = len - BaseMinTimespan;
             }
             else if (State == RouteMatrixState.Process)
             {
@@ -276,13 +276,13 @@ namespace MosMetroPath
         /// <summary>
         /// Оценка нижней границы
         /// </summary>
-        private void CalcCurrentMinLength()
+        private void CalcCurrentMinTimespan()
         {
             //CurrentMinLength = 0;
             for (int col = 0; col < ColumnsCount; ++col)
-                CurrentMinLength += Items[col, RowsCount].Value;
+                CurrentMinTimespan += Items[col, RowsCount].Value;
             for (int row = 0; row < RowsCount; ++row)
-                CurrentMinLength += Items[ColumnsCount, row].Value;
+                CurrentMinTimespan += Items[ColumnsCount, row].Value;
         }
 
         /// <summary>
@@ -293,12 +293,12 @@ namespace MosMetroPath
             SubtractMinValuesByRows();
             SubtractMinValuesByCols();
 
-            CalcCurrentMinLength();
+            CalcCurrentMinTimespan();
 
-            if (BaseMinLength == 0)
+            if (BaseMinTimespan == 0)
             {
-                BaseMinLength = CurrentMinLength;
-                CurrentMinLength = 0;
+                BaseMinTimespan = CurrentMinTimespan;
+                CurrentMinTimespan = 0;
             }
         }
 
@@ -397,7 +397,7 @@ namespace MosMetroPath
             }
             
 
-            RouteMatrix result = new RouteMatrix(newHeaders, routes, MinLength, newState);
+            RouteMatrix result = new RouteMatrix(newHeaders, routes, MinTimespan, newState);
 
             if (result.State == RouteMatrixState.Process)
             {
@@ -427,7 +427,7 @@ namespace MosMetroPath
 
                 result.FillMinValuesByRows();
                 result.FillMinValuesByCols();
-                result.CalcCurrentMinLength();
+                result.CalcCurrentMinTimespan();
             }         
 
             return result;
